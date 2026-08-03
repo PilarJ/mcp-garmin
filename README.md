@@ -16,6 +16,31 @@ stdio server. Two consequences follow from that:
 
 Data access is provided by [`garminconnect`](https://github.com/cyberjunky/python-garminconnect).
 
+## Why a GitHub OAuth app?
+
+It is reasonable to ask what GitHub has to do with reading your own Garmin
+data. Nothing — GitHub is only the login screen. The chain that puts it there:
+
+1. **claude.ai will not accept a static token.** Its connector dialog can send
+   fixed request headers, but that feature is in limited beta. Without it the
+   only way to add a remote MCP server is OAuth.
+2. **OAuth needs something that authenticates a human.** The server must run an
+   authorization flow, which means a browser sign-in that proves who you are.
+3. **The server has no user database, and should not have one.** FastMCP's
+   `OAuthProxy` translates between the MCP client and an existing identity
+   provider; it does not store users or passwords itself.
+
+So an identity provider is required, and GitHub is a convenient one. The app
+requests the `user` scope only — it reads your profile, not your repositories —
+and the single field taken from it is your `login`, which is compared against
+`ALLOWED_GITHUB_LOGINS`.
+
+Nothing depends on GitHub specifically. FastMCP ships providers for Google,
+Azure, Auth0, Keycloak, Discord, WorkOS and others; swapping is a one-line
+import change in `server.py` plus the matching credentials. What will *not*
+work is FastMCP's `InMemoryOAuthProvider` — it simulates the flow for tests and
+authenticates nobody, so on a public URL it would admit anyone.
+
 ## Access control
 
 Holding a valid GitHub identity is not enough. `ALLOWED_GITHUB_LOGINS` lists
