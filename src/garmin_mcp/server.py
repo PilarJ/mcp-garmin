@@ -7,7 +7,7 @@ import logging
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.github import GitHubProvider
 
-from . import tools
+from . import routes, tools
 from .auth import GitHubAllowlistMiddleware
 from .client import GarminClient
 from .settings import Settings, load_settings
@@ -40,6 +40,7 @@ def build_server(settings: Settings) -> FastMCP:
     mcp.add_middleware(GitHubAllowlistMiddleware(settings.allowed_github_logins))
 
     tools.register(mcp, GarminClient(settings.token_dir))
+    routes.register(mcp, settings)
     return mcp
 
 
