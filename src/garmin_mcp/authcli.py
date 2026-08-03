@@ -38,12 +38,33 @@ def main() -> int:
         email=email,
         password=password,
         prompt_mfa=lambda: input("MFA code: ").strip(),
+        # One attempt per run, deliberately. Garmin rate-limits its sign-in
+        # endpoints per account, and the library's default of 3 turns a single
+        # invocation into three strikes against that budget.
+        retry_attempts=1,
     )
 
     try:
         api.login(tokenstore=str(token_dir))
     except Exception as exc:
-        print(f"Login failed: {exc}", file=sys.stderr)
+        message = str(exc)
+        if "429" in message or "rate limit" in message.lower():
+            print(
+                "\nGarmin is rate-limiting sign-in for this account (HTTP 429).\n"
+                "\n"
+                "This is not a wrong password — the attempt never reached the\n"
+                "credential check. The limit is reported to be keyed on the\n"
+                "account rather than the IP, so switching network or VPN does\n"
+                "not clear it, and every further attempt extends the window.\n"
+                "\n"
+                "Wait roughly 24 hours, then run this once more. To check the\n"
+                "account itself is healthy in the meantime, sign in at\n"
+                "https://connect.garmin.com in a browser — the website uses a\n"
+                "different limit bucket and normally still works.\n",
+                file=sys.stderr,
+            )
+            return 2
+        print(f"Login failed: {message}", file=sys.stderr)
         return 1
 
     # login() writes the tokens itself; dump again so a partially-written
